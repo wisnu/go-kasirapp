@@ -1,13 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
+	"github.com/gin-gonic/gin"
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
@@ -48,193 +47,187 @@ func main() {
 	addr := ":" + port
 	fmt.Printf("Starting server on %s\n", addr)
 
-	// Handle API routes
+	router := gin.Default()
 
-	// Handle GET /api/products to get list all products and POST /api/products to add a new product
-	// GET /api/products - List all products
-	// POST /api/products - Add a new product
-	http.HandleFunc("/api/products", handleProducts)
-	http.HandleFunc("/api/products/", handleProducts)
+	// Products
+	router.GET("/api/products", handleGetProducts)
+	router.POST("/api/products", handleCreateProduct)
+	router.GET("/api/products/:id", handleGetProductByID)
+	router.PUT("/api/products/:id", handleUpdateProduct)
+	router.DELETE("/api/products/:id", handleDeleteProduct)
 
-	// Handle CRUD /categories and /categories/{id}
-	http.HandleFunc("/categories", handleCategories)
-	http.HandleFunc("/categories/", handleCategories)
+	// Categories
+	router.GET("/categories", handleGetCategories)
+	router.POST("/categories", handleCreateCategory)
+	router.GET("/categories/:id", handleGetCategoryByID)
+	router.PUT("/categories/:id", handleUpdateCategory)
+	router.DELETE("/categories/:id", handleDeleteCategory)
 
 	// Health check
-	http.HandleFunc("/health", handleHealth)
+	router.GET("/health", handleHealth)
 
 	// Swagger UI and spec
-	http.Handle("/swagger/", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
-	http.HandleFunc("/swagger/doc.json", handleSwaggerDoc)
+	router.GET("/swagger/*any", handleSwagger)
 
-	http.HandleFunc("/", handleRoot)
-	err := http.ListenAndServe(addr, nil)
+	router.GET("/", handleRoot)
+	err := router.Run(addr)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func handleProducts(w http.ResponseWriter, r *http.Request) {
-	// Handle GET , PUT, DELETE /api/products/{id}
-	if r.URL.Path != "/api/products" && r.URL.Path != "/api/products/" {
-		switch r.Method {
-		case http.MethodGet, http.MethodPut, http.MethodDelete:
-		default:
-			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			return
-		}
-		id, err := parseAndValidateIDFromPath(r.URL.Path, "/api/products/")
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "Invalid product ID")
-			return
-		}
-
-		switch r.Method {
-		case http.MethodGet:
-			for _, product := range products {
-				if product.ID == id {
-					writeJSON(w, http.StatusOK, product)
-					return
-				}
-			}
-			writeError(w, http.StatusNotFound, "Product not found")
-		case http.MethodPut:
-			var updated Product
-			err := json.NewDecoder(r.Body).Decode(&updated)
-			if err != nil {
-				writeError(w, http.StatusBadRequest, err.Error())
-				return
-			}
-			for i, product := range products {
-				if product.ID == id {
-					updated.ID = product.ID
-					products[i] = updated
-					writeJSON(w, http.StatusOK, updated)
-					return
-				}
-			}
-			writeError(w, http.StatusNotFound, "Product not found")
-		case http.MethodDelete:
-			for i, product := range products {
-				if product.ID == id {
-					products = append(products[:i], products[i+1:]...)
-					writeJSON(w, http.StatusOK, map[string]string{"message": "Product deleted"})
-					return
-				}
-			}
-			writeError(w, http.StatusNotFound, "Product not found")
-		}
-		return
-	}
-
-	// Handle GET all products
-	if r.Method == http.MethodGet {
-		writeJSON(w, http.StatusOK, products)
-		return
-	}
-
-	// Handle POST to add a new product
-	if r.Method == http.MethodPost {
-		var newProduct Product
-		err := json.NewDecoder(r.Body).Decode(&newProduct)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		newProduct.ID = nextProductID()
-		products = append(products, newProduct)
-		writeJSON(w, http.StatusCreated, newProduct)
-		return
-	}
-	writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+func handleGetProducts(c *gin.Context) {
+	writeJSON(c, http.StatusOK, products)
 }
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"message": "Hello, Ini Backend Program Kasir!"})
-}
-
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "Service is running"})
-}
-
-func handleSwaggerDoc(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(swaggerSpec))
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(payload)
-}
-
-func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
-}
-
-func handleCategories(w http.ResponseWriter, r *http.Request) {
-
-	// Handle GET , PUT, DELETE /categories/{id}
-	if r.URL.Path != "/categories" && r.URL.Path != "/categories/" {
-		if r.Method != http.MethodGet && r.Method != http.MethodPut && r.Method != http.MethodDelete {
-			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			return
-		}
-		id, err := parseAndValidateIDFromPath(r.URL.Path, "/categories/")
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "Invalid category ID")
-			return
-		}
-
-		for i, category := range categories {
-			if category.ID == id {
-				switch r.Method {
-				case http.MethodGet:
-					writeJSON(w, http.StatusOK, category)
-					return
-				case http.MethodPut:
-					var updated Category
-					err := json.NewDecoder(r.Body).Decode(&updated)
-					if err != nil {
-						writeError(w, http.StatusBadRequest, err.Error())
-						return
-					}
-					updated.ID = category.ID
-					categories[i] = updated
-					writeJSON(w, http.StatusOK, updated)
-					return
-				case http.MethodDelete:
-					categories = append(categories[:i], categories[i+1:]...)
-					writeJSON(w, http.StatusOK, map[string]string{"message": "Category deleted"})
-					return
-				}
-			}
-		}
-		writeError(w, http.StatusNotFound, "Category not found")
+func handleCreateProduct(c *gin.Context) {
+	var newProduct Product
+	if err := c.ShouldBindJSON(&newProduct); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
 		return
 	}
+	newProduct.ID = nextProductID()
+	products = append(products, newProduct)
+	writeJSON(c, http.StatusCreated, newProduct)
+}
 
-	// Handle GET all categories
-	if r.Method == http.MethodGet {
-		writeJSON(w, http.StatusOK, categories)
+func handleGetProductByID(c *gin.Context) {
+	id, ok := parseIDParam(c, "id", "Invalid product ID")
+	if !ok {
 		return
 	}
-
-	// Handle POST to add a new category
-	if r.Method == http.MethodPost {
-		var newCategory Category
-		err := json.NewDecoder(r.Body).Decode(&newCategory)
-		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
+	for _, product := range products {
+		if product.ID == id {
+			writeJSON(c, http.StatusOK, product)
 			return
 		}
-		newCategory.ID = nextCategoryID()
-		categories = append(categories, newCategory)
-		writeJSON(w, http.StatusCreated, newCategory)
+	}
+	writeError(c, http.StatusNotFound, "Product not found")
+}
+
+func handleUpdateProduct(c *gin.Context) {
+	id, ok := parseIDParam(c, "id", "Invalid product ID")
+	if !ok {
 		return
 	}
-	writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	var updated Product
+	if err := c.ShouldBindJSON(&updated); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	for i, product := range products {
+		if product.ID == id {
+			updated.ID = product.ID
+			products[i] = updated
+			writeJSON(c, http.StatusOK, updated)
+			return
+		}
+	}
+	writeError(c, http.StatusNotFound, "Product not found")
+}
+
+func handleDeleteProduct(c *gin.Context) {
+	id, ok := parseIDParam(c, "id", "Invalid product ID")
+	if !ok {
+		return
+	}
+	for i, product := range products {
+		if product.ID == id {
+			products = append(products[:i], products[i+1:]...)
+			writeJSON(c, http.StatusOK, map[string]string{"message": "Product deleted"})
+			return
+		}
+	}
+	writeError(c, http.StatusNotFound, "Product not found")
+}
+
+func handleGetCategories(c *gin.Context) {
+	writeJSON(c, http.StatusOK, categories)
+}
+
+func handleCreateCategory(c *gin.Context) {
+	var newCategory Category
+	if err := c.ShouldBindJSON(&newCategory); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	newCategory.ID = nextCategoryID()
+	categories = append(categories, newCategory)
+	writeJSON(c, http.StatusCreated, newCategory)
+}
+
+func handleGetCategoryByID(c *gin.Context) {
+	id, ok := parseIDParam(c, "id", "Invalid category ID")
+	if !ok {
+		return
+	}
+	for _, category := range categories {
+		if category.ID == id {
+			writeJSON(c, http.StatusOK, category)
+			return
+		}
+	}
+	writeError(c, http.StatusNotFound, "Category not found")
+}
+
+func handleUpdateCategory(c *gin.Context) {
+	id, ok := parseIDParam(c, "id", "Invalid category ID")
+	if !ok {
+		return
+	}
+	var updated Category
+	if err := c.ShouldBindJSON(&updated); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	for i, category := range categories {
+		if category.ID == id {
+			updated.ID = category.ID
+			categories[i] = updated
+			writeJSON(c, http.StatusOK, updated)
+			return
+		}
+	}
+	writeError(c, http.StatusNotFound, "Category not found")
+}
+
+func handleDeleteCategory(c *gin.Context) {
+	id, ok := parseIDParam(c, "id", "Invalid category ID")
+	if !ok {
+		return
+	}
+	for i, category := range categories {
+		if category.ID == id {
+			categories = append(categories[:i], categories[i+1:]...)
+			writeJSON(c, http.StatusOK, map[string]string{"message": "Category deleted"})
+			return
+		}
+	}
+	writeError(c, http.StatusNotFound, "Category not found")
+}
+
+func handleRoot(c *gin.Context) {
+	writeJSON(c, http.StatusOK, map[string]string{"message": "Hello, Ini Backend Program Kasir!"})
+}
+
+func handleHealth(c *gin.Context) {
+	writeJSON(c, http.StatusOK, map[string]string{"status": "ok", "message": "Service is running"})
+}
+
+func handleSwagger(c *gin.Context) {
+	if c.Param("any") == "/doc.json" {
+		c.Data(http.StatusOK, "application/json", []byte(swaggerSpec))
+		return
+	}
+	httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json"))(c.Writer, c.Request)
+}
+
+func writeJSON(c *gin.Context, status int, payload interface{}) {
+	c.JSON(status, payload)
+}
+
+func writeError(c *gin.Context, status int, message string) {
+	c.JSON(status, gin.H{"error": message})
 }
 
 func nextCategoryID() int {
@@ -257,15 +250,13 @@ func nextProductID() int {
 	return maxID + 1
 }
 
-func parseAndValidateIDFromPath(path, prefix string) (int, error) {
-	// Extract ID from path
-	idPart := strings.TrimPrefix(path, prefix)
-
-	// Validate ID part, must be a number
-	if idPart == "" || strings.Contains(idPart, "/") {
-		return 0, fmt.Errorf("invalid path")
+func parseIDParam(c *gin.Context, name, errMsg string) (int, bool) {
+	id, err := strconv.Atoi(c.Param(name))
+	if err != nil {
+		writeError(c, http.StatusBadRequest, errMsg)
+		return 0, false
 	}
-	return strconv.Atoi(idPart)
+	return id, true
 }
 
 const swaggerSpec = `{
