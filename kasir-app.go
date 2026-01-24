@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // Represents a product in the inventory
@@ -60,6 +62,10 @@ func main() {
 
 	// Health check
 	http.HandleFunc("/health", handleHealth)
+
+	// Swagger UI and spec
+	http.Handle("/swagger/", httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json")))
+	http.HandleFunc("/swagger/doc.json", handleSwaggerDoc)
 
 	http.HandleFunc("/", handleRoot)
 	err := http.ListenAndServe(addr, nil)
@@ -149,6 +155,12 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "Service is running"})
+}
+
+func handleSwaggerDoc(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(swaggerSpec))
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
@@ -255,3 +267,213 @@ func parseAndValidateIDFromPath(path, prefix string) (int, error) {
 	}
 	return strconv.Atoi(idPart)
 }
+
+const swaggerSpec = `{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Kasir API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Product" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Product" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Product" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "parameters": [ { "$ref": "#/components/parameters/IdParam" } ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Product" }
+              }
+            }
+          },
+          "404": { "description": "Not Found" }
+        }
+      },
+      "put": {
+        "parameters": [ { "$ref": "#/components/parameters/IdParam" } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Product" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Product" }
+              }
+            }
+          },
+          "404": { "description": "Not Found" }
+        }
+      },
+      "delete": {
+        "parameters": [ { "$ref": "#/components/parameters/IdParam" } ],
+        "responses": {
+          "200": { "description": "OK" },
+          "404": { "description": "Not Found" }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Category" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Category" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Category" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "parameters": [ { "$ref": "#/components/parameters/IdParam" } ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Category" }
+              }
+            }
+          },
+          "404": { "description": "Not Found" }
+        }
+      },
+      "put": {
+        "parameters": [ { "$ref": "#/components/parameters/IdParam" } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Category" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Category" }
+              }
+            }
+          },
+          "404": { "description": "Not Found" }
+        }
+      },
+      "delete": {
+        "parameters": [ { "$ref": "#/components/parameters/IdParam" } ],
+        "responses": {
+          "200": { "description": "OK" },
+          "404": { "description": "Not Found" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "IdParam": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "integer" }
+      }
+    },
+    "schemas": {
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "price": { "type": "number", "format": "float" },
+          "stock": { "type": "integer" }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}`
