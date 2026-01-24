@@ -15,6 +15,13 @@ type Product struct {
 	Stock int     `json:"stock"`
 }
 
+// Represents a category for products
+type Category struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 // Mock data for products
 var products = []Product{
 	{ID: 1, Name: "Laptop", Price: 999.99, Stock: 10},
@@ -23,19 +30,26 @@ var products = []Product{
 	{ID: 4, Name: "Headphones", Price: 99.99, Stock: 60},
 }
 
+// Mock data for categories
+var categories = []Category{
+	{ID: 1, Name: "Electronics", Description: "Electronic devices and gadgets"},
+	{ID: 2, Name: "Accessories", Description: "Related accessories and add-ons"},
+}
+
 func main() {
 	fmt.Println("Starting server on :8080")
 
 	// Handle API routes
 
-	// Handle GET /api/products/{id} to get product by ID
-	// GET /api/products/{id} - Get product by ID
-	http.HandleFunc("/api/products/", handleGetProductByID)
-
 	// Handle GET /api/products to get list all products and POST /api/products to add a new product
 	// GET /api/products - List all products
 	// POST /api/products - Add a new product
 	http.HandleFunc("/api/products", handleProducts)
+	http.HandleFunc("/api/products/", handleProducts)
+
+	// Handle CRUD /categories and /categories/{id}
+	http.HandleFunc("/categories", handleCategories)
+	http.HandleFunc("/categories/", handleCategories)
 
 	http.HandleFunc("/", handleRoot)
 	err := http.ListenAndServe(":8080", nil)
@@ -44,28 +58,67 @@ func main() {
 	}
 }
 
-func handleGetProductByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Path[len("/api/products/"):]
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid product ID")
+func handleProducts(w http.ResponseWriter, r *http.Request) {
+	// Handle GET , PUT, DELETE /api/products/{id}
+	if r.URL.Path != "/api/products" && r.URL.Path != "/api/products/" {
+		switch r.Method {
+		case http.MethodGet, http.MethodPut, http.MethodDelete:
+		default:
+			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+		idStr := r.URL.Path[len("/api/products/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid product ID")
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			for _, product := range products {
+				if product.ID == id {
+					writeJSON(w, http.StatusOK, product)
+					return
+				}
+			}
+			writeError(w, http.StatusNotFound, "Product not found")
+		case http.MethodPut:
+			var updated Product
+			err := json.NewDecoder(r.Body).Decode(&updated)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			for i, product := range products {
+				if product.ID == id {
+					updated.ID = product.ID
+					products[i] = updated
+					writeJSON(w, http.StatusOK, updated)
+					return
+				}
+			}
+			writeError(w, http.StatusNotFound, "Product not found")
+		case http.MethodDelete:
+			for i, product := range products {
+				if product.ID == id {
+					products = append(products[:i], products[i+1:]...)
+					writeJSON(w, http.StatusOK, map[string]string{"message": "Product deleted"})
+					return
+				}
+			}
+			writeError(w, http.StatusNotFound, "Product not found")
+		}
 		return
 	}
 
-	for _, product := range products {
-		if product.ID == id {
-			writeJSON(w, http.StatusOK, product)
-			return
-		}
-	}
-	writeError(w, http.StatusNotFound, "Product not found")
-}
-
-func handleProducts(w http.ResponseWriter, r *http.Request) {
+	// Handle GET all products
 	if r.Method == http.MethodGet {
 		writeJSON(w, http.StatusOK, products)
 		return
 	}
+
+	// Handle POST to add a new product
 	if r.Method == http.MethodPost {
 		var newProduct Product
 		err := json.NewDecoder(r.Body).Decode(&newProduct)
@@ -73,7 +126,7 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		newProduct.ID = len(products) + 1
+		newProduct.ID = nextProductID()
 		products = append(products, newProduct)
 		writeJSON(w, http.StatusCreated, newProduct)
 		return
@@ -93,4 +146,89 @@ func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
 
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func handleCategories(w http.ResponseWriter, r *http.Request) {
+
+	// Handle GET , PUT, DELETE /categories/{id}
+	if r.URL.Path != "/categories" && r.URL.Path != "/categories/" {
+		if r.Method != http.MethodGet && r.Method != http.MethodPut && r.Method != http.MethodDelete {
+			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+		idStr := r.URL.Path[len("/categories/"):]
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "Invalid category ID")
+			return
+		}
+
+		for i, category := range categories {
+			if category.ID == id {
+				switch r.Method {
+				case http.MethodGet:
+					writeJSON(w, http.StatusOK, category)
+					return
+				case http.MethodPut:
+					var updated Category
+					err := json.NewDecoder(r.Body).Decode(&updated)
+					if err != nil {
+						writeError(w, http.StatusBadRequest, err.Error())
+						return
+					}
+					updated.ID = category.ID
+					categories[i] = updated
+					writeJSON(w, http.StatusOK, updated)
+					return
+				case http.MethodDelete:
+					categories = append(categories[:i], categories[i+1:]...)
+					writeJSON(w, http.StatusOK, map[string]string{"message": "Category deleted"})
+					return
+				}
+			}
+		}
+		writeError(w, http.StatusNotFound, "Category not found")
+		return
+	}
+
+	// Handle GET all categories
+	if r.Method == http.MethodGet {
+		writeJSON(w, http.StatusOK, categories)
+		return
+	}
+
+	// Handle POST to add a new category
+	if r.Method == http.MethodPost {
+		var newCategory Category
+		err := json.NewDecoder(r.Body).Decode(&newCategory)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		newCategory.ID = nextCategoryID()
+		categories = append(categories, newCategory)
+		writeJSON(w, http.StatusCreated, newCategory)
+		return
+	}
+	writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
+}
+
+func nextCategoryID() int {
+	maxID := 0
+	for _, category := range categories {
+		if category.ID > maxID {
+			maxID = category.ID
+		}
+	}
+	return maxID + 1
+}
+
+func nextProductID() int {
+	maxID := 0
+	for _, product := range products {
+		if product.ID > maxID {
+			maxID = product.ID
+		}
+	}
+	return maxID + 1
 }
