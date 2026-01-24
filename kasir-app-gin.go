@@ -6,7 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gin-gonic/gin"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // Represents a product in the inventory
@@ -46,182 +47,187 @@ func main() {
 	addr := ":" + port
 	fmt.Printf("Starting server on %s\n", addr)
 
-	app := fiber.New()
+	router := gin.Default()
 
 	// Products
-	app.Get("/api/products", handleGetProducts)
-	app.Post("/api/products", handleCreateProduct)
-	app.Get("/api/products/:id", handleGetProductByID)
-	app.Put("/api/products/:id", handleUpdateProduct)
-	app.Delete("/api/products/:id", handleDeleteProduct)
+	router.GET("/api/products", handleGetProducts)
+	router.POST("/api/products", handleCreateProduct)
+	router.GET("/api/products/:id", handleGetProductByID)
+	router.PUT("/api/products/:id", handleUpdateProduct)
+	router.DELETE("/api/products/:id", handleDeleteProduct)
 
 	// Categories
-	app.Get("/categories", handleGetCategories)
-	app.Post("/categories", handleCreateCategory)
-	app.Get("/categories/:id", handleGetCategoryByID)
-	app.Put("/categories/:id", handleUpdateCategory)
-	app.Delete("/categories/:id", handleDeleteCategory)
+	router.GET("/categories", handleGetCategories)
+	router.POST("/categories", handleCreateCategory)
+	router.GET("/categories/:id", handleGetCategoryByID)
+	router.PUT("/categories/:id", handleUpdateCategory)
+	router.DELETE("/categories/:id", handleDeleteCategory)
 
 	// Health check
-	app.Get("/health", handleHealth)
+	router.GET("/health", handleHealth)
 
 	// Swagger UI and spec
-	app.Get("/swagger", handleSwaggerUI)
-	app.Get("/swagger/", handleSwaggerUI)
-	app.Get("/swagger/index.html", handleSwaggerUI)
-	app.Get("/swagger/doc.json", handleSwaggerDoc)
+	router.GET("/swagger/*any", handleSwagger)
 
-	app.Get("/", handleRoot)
-	err := app.Listen(addr)
+	router.GET("/", handleRoot)
+	err := router.Run(addr)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func handleGetProducts(c *fiber.Ctx) error {
-	return writeJSON(c, http.StatusOK, products)
+func handleGetProducts(c *gin.Context) {
+	writeJSON(c, http.StatusOK, products)
 }
 
-func handleCreateProduct(c *fiber.Ctx) error {
+func handleCreateProduct(c *gin.Context) {
 	var newProduct Product
-	if err := c.BodyParser(&newProduct); err != nil {
-		return writeError(c, http.StatusBadRequest, err.Error())
+	if err := c.ShouldBindJSON(&newProduct); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
 	}
 	newProduct.ID = nextProductID()
 	products = append(products, newProduct)
-	return writeJSON(c, http.StatusCreated, newProduct)
+	writeJSON(c, http.StatusCreated, newProduct)
 }
 
-func handleGetProductByID(c *fiber.Ctx) error {
+func handleGetProductByID(c *gin.Context) {
 	id, ok := parseIDParam(c, "id", "Invalid product ID")
 	if !ok {
-		return nil
+		return
 	}
 	for _, product := range products {
 		if product.ID == id {
-			return writeJSON(c, http.StatusOK, product)
+			writeJSON(c, http.StatusOK, product)
+			return
 		}
 	}
-	return writeError(c, http.StatusNotFound, "Product not found")
+	writeError(c, http.StatusNotFound, "Product not found")
 }
 
-func handleUpdateProduct(c *fiber.Ctx) error {
+func handleUpdateProduct(c *gin.Context) {
 	id, ok := parseIDParam(c, "id", "Invalid product ID")
 	if !ok {
-		return nil
+		return
 	}
 	var updated Product
-	if err := c.BodyParser(&updated); err != nil {
-		return writeError(c, http.StatusBadRequest, err.Error())
+	if err := c.ShouldBindJSON(&updated); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
 	}
 	for i, product := range products {
 		if product.ID == id {
 			updated.ID = product.ID
 			products[i] = updated
-			return writeJSON(c, http.StatusOK, updated)
+			writeJSON(c, http.StatusOK, updated)
+			return
 		}
 	}
-	return writeError(c, http.StatusNotFound, "Product not found")
+	writeError(c, http.StatusNotFound, "Product not found")
 }
 
-func handleDeleteProduct(c *fiber.Ctx) error {
+func handleDeleteProduct(c *gin.Context) {
 	id, ok := parseIDParam(c, "id", "Invalid product ID")
 	if !ok {
-		return nil
+		return
 	}
 	for i, product := range products {
 		if product.ID == id {
 			products = append(products[:i], products[i+1:]...)
-			return writeJSON(c, http.StatusOK, map[string]string{"message": "Product deleted"})
+			writeJSON(c, http.StatusOK, map[string]string{"message": "Product deleted"})
+			return
 		}
 	}
-	return writeError(c, http.StatusNotFound, "Product not found")
+	writeError(c, http.StatusNotFound, "Product not found")
 }
 
-func handleGetCategories(c *fiber.Ctx) error {
-	return writeJSON(c, http.StatusOK, categories)
+func handleGetCategories(c *gin.Context) {
+	writeJSON(c, http.StatusOK, categories)
 }
 
-func handleCreateCategory(c *fiber.Ctx) error {
+func handleCreateCategory(c *gin.Context) {
 	var newCategory Category
-	if err := c.BodyParser(&newCategory); err != nil {
-		return writeError(c, http.StatusBadRequest, err.Error())
+	if err := c.ShouldBindJSON(&newCategory); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
 	}
 	newCategory.ID = nextCategoryID()
 	categories = append(categories, newCategory)
-	return writeJSON(c, http.StatusCreated, newCategory)
+	writeJSON(c, http.StatusCreated, newCategory)
 }
 
-func handleGetCategoryByID(c *fiber.Ctx) error {
+func handleGetCategoryByID(c *gin.Context) {
 	id, ok := parseIDParam(c, "id", "Invalid category ID")
 	if !ok {
-		return nil
+		return
 	}
 	for _, category := range categories {
 		if category.ID == id {
-			return writeJSON(c, http.StatusOK, category)
+			writeJSON(c, http.StatusOK, category)
+			return
 		}
 	}
-	return writeError(c, http.StatusNotFound, "Category not found")
+	writeError(c, http.StatusNotFound, "Category not found")
 }
 
-func handleUpdateCategory(c *fiber.Ctx) error {
+func handleUpdateCategory(c *gin.Context) {
 	id, ok := parseIDParam(c, "id", "Invalid category ID")
 	if !ok {
-		return nil
+		return
 	}
 	var updated Category
-	if err := c.BodyParser(&updated); err != nil {
-		return writeError(c, http.StatusBadRequest, err.Error())
+	if err := c.ShouldBindJSON(&updated); err != nil {
+		writeError(c, http.StatusBadRequest, err.Error())
+		return
 	}
 	for i, category := range categories {
 		if category.ID == id {
 			updated.ID = category.ID
 			categories[i] = updated
-			return writeJSON(c, http.StatusOK, updated)
+			writeJSON(c, http.StatusOK, updated)
+			return
 		}
 	}
-	return writeError(c, http.StatusNotFound, "Category not found")
+	writeError(c, http.StatusNotFound, "Category not found")
 }
 
-func handleDeleteCategory(c *fiber.Ctx) error {
+func handleDeleteCategory(c *gin.Context) {
 	id, ok := parseIDParam(c, "id", "Invalid category ID")
 	if !ok {
-		return nil
+		return
 	}
 	for i, category := range categories {
 		if category.ID == id {
 			categories = append(categories[:i], categories[i+1:]...)
-			return writeJSON(c, http.StatusOK, map[string]string{"message": "Category deleted"})
+			writeJSON(c, http.StatusOK, map[string]string{"message": "Category deleted"})
+			return
 		}
 	}
-	return writeError(c, http.StatusNotFound, "Category not found")
+	writeError(c, http.StatusNotFound, "Category not found")
 }
 
-func handleRoot(c *fiber.Ctx) error {
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "Hello, Ini Backend Program Kasir!"})
+func handleRoot(c *gin.Context) {
+	writeJSON(c, http.StatusOK, map[string]string{"message": "Hello, Ini Backend Program Kasir!"})
 }
 
-func handleHealth(c *fiber.Ctx) error {
-	return writeJSON(c, http.StatusOK, map[string]string{"status": "ok", "message": "Service is running"})
+func handleHealth(c *gin.Context) {
+	writeJSON(c, http.StatusOK, map[string]string{"status": "ok", "message": "Service is running"})
 }
 
-func handleSwaggerUI(c *fiber.Ctx) error {
-	c.Set("Content-Type", "text/html; charset=utf-8")
-	return c.Status(http.StatusOK).SendString(swaggerUIHTML)
+func handleSwagger(c *gin.Context) {
+	if c.Param("any") == "/doc.json" {
+		c.Data(http.StatusOK, "application/json", []byte(swaggerSpec))
+		return
+	}
+	httpSwagger.Handler(httpSwagger.URL("/swagger/doc.json"))(c.Writer, c.Request)
 }
 
-func handleSwaggerDoc(c *fiber.Ctx) error {
-	c.Set("Content-Type", "application/json")
-	return c.Status(http.StatusOK).SendString(swaggerSpec)
+func writeJSON(c *gin.Context, status int, payload interface{}) {
+	c.JSON(status, payload)
 }
 
-func writeJSON(c *fiber.Ctx, status int, payload interface{}) error {
-	return c.Status(status).JSON(payload)
-}
-
-func writeError(c *fiber.Ctx, status int, message string) error {
-	return c.Status(status).JSON(fiber.Map{"error": message})
+func writeError(c *gin.Context, status int, message string) {
+	c.JSON(status, gin.H{"error": message})
 }
 
 func nextCategoryID() int {
@@ -244,10 +250,10 @@ func nextProductID() int {
 	return maxID + 1
 }
 
-func parseIDParam(c *fiber.Ctx, name, errMsg string) (int, bool) {
-	id, err := strconv.Atoi(c.Params(name))
+func parseIDParam(c *gin.Context, name, errMsg string) (int, bool) {
+	id, err := strconv.Atoi(c.Param(name))
 	if err != nil {
-		_ = writeError(c, http.StatusBadRequest, errMsg)
+		writeError(c, http.StatusBadRequest, errMsg)
 		return 0, false
 	}
 	return id, true
@@ -462,25 +468,3 @@ const swaggerSpec = `{
     }
   }
 }`
-
-const swaggerUIHTML = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Kasir API Docs</title>
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
-  </head>
-  <body>
-    <div id="swagger-ui"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-    <script>
-      window.onload = function () {
-        SwaggerUIBundle({
-          url: "/swagger/doc.json",
-          dom_id: "#swagger-ui"
-        });
-      };
-    </script>
-  </body>
-</html>`
