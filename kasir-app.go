@@ -48,43 +48,49 @@ func handleGetProductByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Path[len("/api/products/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "Invalid product ID")
 		return
 	}
 
 	for _, product := range products {
 		if product.ID == id {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(product)
+			writeJSON(w, http.StatusOK, product)
 			return
 		}
 	}
-	http.Error(w, "Product not found", http.StatusNotFound)
+	writeError(w, http.StatusNotFound, "Product not found")
 }
 
 func handleProducts(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(products)
+		writeJSON(w, http.StatusOK, products)
 		return
 	}
 	if r.Method == http.MethodPost {
 		var newProduct Product
 		err := json.NewDecoder(r.Body).Decode(&newProduct)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		newProduct.ID = len(products) + 1
 		products = append(products, newProduct)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(newProduct)
+		writeJSON(w, http.StatusCreated, newProduct)
 		return
 	}
+	writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	json.NewEncoder(w).Encode(map[string]string{"message": "Hello, World!"})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "Hello, Ini Backend Program Kasir!"})
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(payload)
+}
+
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
 }
