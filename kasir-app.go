@@ -51,6 +51,9 @@ func main() {
 	http.HandleFunc("/categories", handleCategories)
 	http.HandleFunc("/categories/", handleCategories)
 
+	// Health check
+	http.HandleFunc("/health", handleHealth)
+
 	http.HandleFunc("/", handleRoot)
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -136,6 +139,10 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Hello, Ini Backend Program Kasir!"})
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", " message": "Service is running"})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
