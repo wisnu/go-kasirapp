@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // Represents a product in the inventory
@@ -70,8 +71,7 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
-		idStr := r.URL.Path[len("/api/products/"):]
-		id, err := strconv.Atoi(idStr)
+		id, err := parseAndValidateIDFromPath(r.URL.Path, "/api/products/")
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "Invalid product ID")
 			return
@@ -142,7 +142,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", " message": "Service is running"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "message": "Service is running"})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
@@ -163,8 +163,7 @@ func handleCategories(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
-		idStr := r.URL.Path[len("/categories/"):]
-		id, err := strconv.Atoi(idStr)
+		id, err := parseAndValidateIDFromPath(r.URL.Path, "/categories/")
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "Invalid category ID")
 			return
@@ -238,4 +237,15 @@ func nextProductID() int {
 		}
 	}
 	return maxID + 1
+}
+
+func parseAndValidateIDFromPath(path, prefix string) (int, error) {
+	// Extract ID from path
+	idPart := strings.TrimPrefix(path, prefix)
+
+	// Validate ID part, must be a number
+	if idPart == "" || strings.Contains(idPart, "/") {
+		return 0, fmt.Errorf("invalid path")
+	}
+	return strconv.Atoi(idPart)
 }
