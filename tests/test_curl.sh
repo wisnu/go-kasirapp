@@ -2,7 +2,7 @@
 # Curl-based manual test for kasir-app API
 # Jalankan setelah server sudah running: go run kasir-app.go
 
-BASE="http://localhost:8080"
+BASE="${1:-http://localhost:8080}"
 PASS=0
 FAIL=0
 
