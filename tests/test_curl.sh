@@ -5,6 +5,7 @@
 BASE="${1:-http://localhost:8080}"
 PASS=0
 FAIL=0
+FAILURES=()
 
 # ---------------------------------------------------------------------------
 # Helper: print header, run curl, print response
@@ -33,6 +34,7 @@ assert_status() {
         PASS=$((PASS + 1))
     else
         echo "FAIL: $label — expected $expected, got $STATUS"
+        FAILURES+=("$label — expected status $expected, got $STATUS | body: $BODY")
         FAIL=$((FAIL + 1))
     fi
 }
@@ -45,6 +47,7 @@ assert_contains() {
         PASS=$((PASS + 1))
     else
         echo "FAIL: $label — body does not contain '$needle'"
+        FAILURES+=("$label — expected body to contain '$needle' | body: $BODY")
         FAIL=$((FAIL + 1))
     fi
 }
@@ -205,5 +208,11 @@ echo "  TOTAL: $((PASS + FAIL))  |  PASS: $PASS  |  FAIL: $FAIL"
 echo "================================================"
 
 if [ "$FAIL" -gt 0 ]; then
+    echo ""
+    echo "--- FAILED TESTS ---"
+    for i in "${!FAILURES[@]}"; do
+        echo "  $((i + 1)). ${FAILURES[$i]}"
+    done
+    echo "--------------------"
     exit 1
 fi
