@@ -2,8 +2,6 @@
 # Curl-based manual test for kasir-app API
 # Jalankan setelah server sudah running: go run kasir-app.go
 
-set -e
-
 BASE="http://localhost:8080"
 PASS=0
 FAIL=0
@@ -189,6 +187,14 @@ run "POST /api/products (invalid JSON)" \
     -d 'not-json' \
     "$BASE/api/products"
 assert_status "invalid json returns 400" "400"
+
+# --- POST product with non-existent category_id (FK violation) ---
+run "POST /api/products (invalid category_id)" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"name":"Ghost","price":10.00,"stock":1,"category_id":9999}' \
+    "$BASE/api/products"
+assert_status "invalid category_id returns 500" "500"
 
 # ===========================================================================
 # SUMMARY
