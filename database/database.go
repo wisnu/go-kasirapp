@@ -15,7 +15,7 @@ import (
 func Connect(cfg config.DBConfig) (*sql.DB, error) {
 
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.User, cfg.Password, cfg.Host, strconv.Itoa(cfg.Port), cfg.Name, cfg.SSLMode,
 	)
 	db, db_err := sql.Open("postgres", dsn)
@@ -28,12 +28,12 @@ func Connect(cfg config.DBConfig) (*sql.DB, error) {
 	db.SetConnMaxIdleTime(2 * time.Minute)
 	db.SetConnMaxLifetime(30 * time.Minute)
 
-	log.Println("Database connected succesfully")
-
 	if err := db.Ping(); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
+
+	log.Println("Database connected succesfully")
 
 	return db, nil
 }
