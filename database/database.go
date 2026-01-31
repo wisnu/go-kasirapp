@@ -2,17 +2,25 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
+	"strconv"
 	"time"
+
+	"kasir-api/config"
 
 	_ "github.com/lib/pq"
 )
 
-func Connect(dsn string) (*sql.DB, error) {
+func Connect(cfg config.DBConfig) (*sql.DB, error) {
 
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
+	dsn := fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.User, cfg.Password, cfg.Host, strconv.Itoa(cfg.Port), cfg.Name, cfg.SSLMode,
+	)
+	db, db_err := sql.Open("postgres", dsn)
+	if db_err != nil {
+		return nil, db_err
 	}
 
 	db.SetMaxOpenConns(25)

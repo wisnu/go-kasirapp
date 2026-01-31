@@ -4,43 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
+	"kasir-api/config"
 	"kasir-api/database"
-
-	"github.com/spf13/viper"
+	"kasir-api/models"
 )
 
-type Config struct {
-	APP_Port int `mapstructure:"app_port"`
-
-	DB_Host     string `mapstructure:"db_host"`
-	DB_Port     int    `mapstructure:"db_port"`
-	DB_User     string `mapstructure:"db_user"`
-	DB_Password string `mapstructure:"db_password"`
-	DB_Name     string `mapstructure:"db_name"`
-	DB_SSLMode  string `mapstructure:"db_sslmode"`
-}
-
-// Represents a product in the inventory
-type Product struct {
-	ID    int     `json:"id"`
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
-	Stock int     `json:"stock"`
-}
-
-// Represents a category for products
-type Category struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
 // Mock data for products
-var products = []Product{
+var products = []models.Product{
 	{ID: 1, Name: "Laptop", Price: 999.99, Stock: 10},
 	{ID: 2, Name: "Smartphone", Price: 499.99, Stock: 25},
 	{ID: 3, Name: "Tablet", Price: 299.99, Stock: 15},
@@ -48,43 +21,25 @@ var products = []Product{
 }
 
 // Mock data for categories
-var categories = []Category{
+var categories = []models.Category{
 	{ID: 1, Name: "Electronics", Description: "Electronic devices and gadgets"},
 	{ID: 2, Name: "Accessories", Description: "Related accessories and add-ons"},
 }
 
 func main() {
 	// Load configuration
-
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	if _, err := os.Stat(".env"); err == nil {
-		viper.SetConfigFile(".env")
-		_ = viper.ReadInConfig()
+	cfg, cfgErr := config.LoadConfig()
+	if cfgErr != nil {
+		panic(cfgErr)
 	}
 
-	config := Config{
-		APP_Port:    viper.GetInt("APP_PORT"),
-		DB_Host:     viper.GetString("DB_HOST"),
-		DB_Port:     viper.GetInt("DB_PORT"),
-		DB_User:     viper.GetString("DB_USER"),
-		DB_Password: viper.GetString("DB_PASSWORD"),
-		DB_Name:     viper.GetString("DB_NAME"),
-		DB_SSLMode:  viper.GetString("DB_SSLMODE"),
-	}
-
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		config.DB_User, config.DB_Password, config.DB_Host, strconv.Itoa(config.DB_Port), config.DB_Name, config.DB_SSLMode,
-	)
-	db, db_err := database.Connect(dsn)
+	db, db_err := database.Connect(cfg.DB)
 	if db_err != nil {
 		panic(db_err)
 	}
 	defer db.Close()
 
-	port := config.APP_Port
+	port := cfg.App.Port
 	addr := ":" + strconv.Itoa(port)
 	fmt.Printf("Starting server on %s\n", addr)
 
@@ -135,7 +90,7 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 			}
 			writeError(w, http.StatusNotFound, "Product not found")
 		case http.MethodPut:
-			var updated Product
+			var updated models.Product
 			err := json.NewDecoder(r.Body).Decode(&updated)
 			if err != nil {
 				writeError(w, http.StatusBadRequest, err.Error())
@@ -171,7 +126,7 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST to add a new product
 	if r.Method == http.MethodPost {
-		var newProduct Product
+		var newProduct models.Product
 		err := json.NewDecoder(r.Body).Decode(&newProduct)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
@@ -224,7 +179,7 @@ func handleCategories(w http.ResponseWriter, r *http.Request) {
 					writeJSON(w, http.StatusOK, category)
 					return
 				case http.MethodPut:
-					var updated Category
+					var updated models.Category
 					err := json.NewDecoder(r.Body).Decode(&updated)
 					if err != nil {
 						writeError(w, http.StatusBadRequest, err.Error())
@@ -253,7 +208,7 @@ func handleCategories(w http.ResponseWriter, r *http.Request) {
 
 	// Handle POST to add a new category
 	if r.Method == http.MethodPost {
-		var newCategory Category
+		var newCategory models.Category
 		err := json.NewDecoder(r.Body).Decode(&newCategory)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
