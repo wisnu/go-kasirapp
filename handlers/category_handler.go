@@ -8,7 +8,15 @@ import (
 	"kasir-api/services"
 )
 
-func HandleCategories(w http.ResponseWriter, r *http.Request) {
+type CategoryHandler struct {
+	service *services.CategoryService
+}
+
+func NewCategoryHandler(service *services.CategoryService) *CategoryHandler {
+	return &CategoryHandler{service: service}
+}
+
+func (h *CategoryHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// Handle GET, PUT, DELETE /categories/{id}
 	if r.URL.Path != "/categories" && r.URL.Path != "/categories/" {
 		if r.Method != http.MethodGet && r.Method != http.MethodPut && r.Method != http.MethodDelete {
@@ -23,7 +31,7 @@ func HandleCategories(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			category, err := services.GetCategoryByID(id)
+			category, err := h.service.GetByID(id)
 			if err != nil {
 				WriteError(w, http.StatusNotFound, err.Error())
 				return
@@ -35,14 +43,14 @@ func HandleCategories(w http.ResponseWriter, r *http.Request) {
 				WriteError(w, http.StatusBadRequest, err.Error())
 				return
 			}
-			result, err := services.UpdateCategory(id, updated)
-			if err != nil {
+			updated.ID = id
+			if err := h.service.Update(&updated); err != nil {
 				WriteError(w, http.StatusNotFound, err.Error())
 				return
 			}
-			WriteJSON(w, http.StatusOK, result)
+			WriteJSON(w, http.StatusOK, updated)
 		case http.MethodDelete:
-			if err := services.DeleteCategory(id); err != nil {
+			if err := h.service.Delete(id); err != nil {
 				WriteError(w, http.StatusNotFound, err.Error())
 				return
 			}
@@ -53,7 +61,12 @@ func HandleCategories(w http.ResponseWriter, r *http.Request) {
 
 	// Handle GET all categories
 	if r.Method == http.MethodGet {
-		WriteJSON(w, http.StatusOK, services.GetAllCategories())
+		categories, err := h.service.GetAll()
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		WriteJSON(w, http.StatusOK, categories)
 		return
 	}
 
@@ -64,8 +77,11 @@ func HandleCategories(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		created := services.CreateCategory(newCategory)
-		WriteJSON(w, http.StatusCreated, created)
+		if err := h.service.Create(&newCategory); err != nil {
+			WriteError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		WriteJSON(w, http.StatusCreated, newCategory)
 		return
 	}
 	WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")

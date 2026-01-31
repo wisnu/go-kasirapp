@@ -1,62 +1,34 @@
 package services
 
 import (
-	"errors"
 	"kasir-api/models"
+	"kasir-api/repositories"
 )
 
-// Categories is the in-memory data store for categories.
-var Categories = []models.Category{
-	{ID: 1, Name: "Electronics", Description: "Electronic devices and gadgets"},
-	{ID: 2, Name: "Accessories", Description: "Related accessories and add-ons"},
+type CategoryService struct {
+	repo *repositories.CategoryRepository
 }
 
-func GetAllCategories() []models.Category {
-	return Categories
+func NewCategoryService(repo *repositories.CategoryRepository) *CategoryService {
+	return &CategoryService{repo: repo}
 }
 
-func GetCategoryByID(id int) (models.Category, error) {
-	for _, category := range Categories {
-		if category.ID == id {
-			return category, nil
-		}
-	}
-	return models.Category{}, errors.New("Category not found")
+func (s *CategoryService) GetAll() ([]models.Category, error) {
+	return s.repo.GetAll()
 }
 
-func CreateCategory(category models.Category) models.Category {
-	category.ID = nextCategoryID()
-	Categories = append(Categories, category)
-	return category
+func (s *CategoryService) GetByID(id int) (*models.Category, error) {
+	return s.repo.GetByID(id)
 }
 
-func UpdateCategory(id int, updated models.Category) (models.Category, error) {
-	for i, category := range Categories {
-		if category.ID == id {
-			updated.ID = category.ID
-			Categories[i] = updated
-			return updated, nil
-		}
-	}
-	return models.Category{}, errors.New("Category not found")
+func (s *CategoryService) Create(category *models.Category) error {
+	return s.repo.Create(category)
 }
 
-func DeleteCategory(id int) error {
-	for i, category := range Categories {
-		if category.ID == id {
-			Categories = append(Categories[:i], Categories[i+1:]...)
-			return nil
-		}
-	}
-	return errors.New("Category not found")
+func (s *CategoryService) Update(category *models.Category) error {
+	return s.repo.Update(category)
 }
 
-func nextCategoryID() int {
-	maxID := 0
-	for _, category := range Categories {
-		if category.ID > maxID {
-			maxID = category.ID
-		}
-	}
-	return maxID + 1
+func (s *CategoryService) Delete(id int) error {
+	return s.repo.Delete(id)
 }

@@ -9,6 +9,8 @@ import (
 	"kasir-api/config"
 	"kasir-api/database"
 	"kasir-api/handlers"
+	"kasir-api/repositories"
+	"kasir-api/services"
 )
 
 func main() {
@@ -24,16 +26,25 @@ func main() {
 	}
 	defer db.Close()
 
+	// Wire: repository -> service -> handler
+	productRepo := repositories.NewProductRepository(db)
+	productService := services.NewProductService(productRepo)
+	productHandler := handlers.NewProductHandler(productService)
+
+	categoryRepo := repositories.NewCategoryRepository(db)
+	categoryService := services.NewCategoryService(categoryRepo)
+	categoryHandler := handlers.NewCategoryHandler(categoryService)
+
 	port := cfg.App.Port
 	addr := ":" + strconv.Itoa(port)
 	fmt.Printf("Starting server on %s\n", addr)
 
 	// Handle API routes
-	http.HandleFunc("/api/products", handlers.HandleProducts)
-	http.HandleFunc("/api/products/", handlers.HandleProducts)
+	http.HandleFunc("/api/products", productHandler.Handle)
+	http.HandleFunc("/api/products/", productHandler.Handle)
 
-	http.HandleFunc("/categories", handlers.HandleCategories)
-	http.HandleFunc("/categories/", handlers.HandleCategories)
+	http.HandleFunc("/categories", categoryHandler.Handle)
+	http.HandleFunc("/categories/", categoryHandler.Handle)
 
 	// Health check
 	http.HandleFunc("/health", handleHealth)

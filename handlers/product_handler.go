@@ -8,7 +8,15 @@ import (
 	"kasir-api/services"
 )
 
-func HandleProducts(w http.ResponseWriter, r *http.Request) {
+type ProductHandler struct {
+	service *services.ProductService
+}
+
+func NewProductHandler(service *services.ProductService) *ProductHandler {
+	return &ProductHandler{service: service}
+}
+
+func (h *ProductHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// Handle GET, PUT, DELETE /api/products/{id}
 	if r.URL.Path != "/api/products" && r.URL.Path != "/api/products/" {
 		switch r.Method {
@@ -25,7 +33,7 @@ func HandleProducts(w http.ResponseWriter, r *http.Request) {
 
 		switch r.Method {
 		case http.MethodGet:
-			product, err := services.GetProductByID(id)
+			product, err := h.service.GetByID(id)
 			if err != nil {
 				WriteError(w, http.StatusNotFound, err.Error())
 				return
@@ -37,14 +45,14 @@ func HandleProducts(w http.ResponseWriter, r *http.Request) {
 				WriteError(w, http.StatusBadRequest, err.Error())
 				return
 			}
-			result, err := services.UpdateProduct(id, updated)
-			if err != nil {
+			updated.ID = id
+			if err := h.service.Update(&updated); err != nil {
 				WriteError(w, http.StatusNotFound, err.Error())
 				return
 			}
-			WriteJSON(w, http.StatusOK, result)
+			WriteJSON(w, http.StatusOK, updated)
 		case http.MethodDelete:
-			if err := services.DeleteProduct(id); err != nil {
+			if err := h.service.Delete(id); err != nil {
 				WriteError(w, http.StatusNotFound, err.Error())
 				return
 			}
@@ -55,7 +63,12 @@ func HandleProducts(w http.ResponseWriter, r *http.Request) {
 
 	// Handle GET all products
 	if r.Method == http.MethodGet {
-		WriteJSON(w, http.StatusOK, services.GetAllProducts())
+		products, err := h.service.GetAll()
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		WriteJSON(w, http.StatusOK, products)
 		return
 	}
 
@@ -66,8 +79,11 @@ func HandleProducts(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		created := services.CreateProduct(newProduct)
-		WriteJSON(w, http.StatusCreated, created)
+		if err := h.service.Create(&newProduct); err != nil {
+			WriteError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		WriteJSON(w, http.StatusCreated, newProduct)
 		return
 	}
 	WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
