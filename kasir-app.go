@@ -7,7 +7,22 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"kasir-api/database"
+
+	"github.com/spf13/viper"
 )
+
+type Config struct {
+	APP_Port int `mapstructure:"app_port"`
+
+	DB_Host     string `mapstructure:"db_host"`
+	DB_Port     int    `mapstructure:"db_port"`
+	DB_User     string `mapstructure:"db_user"`
+	DB_Password string `mapstructure:"db_password"`
+	DB_Name     string `mapstructure:"db_name"`
+	DB_SSLMode  string `mapstructure:"db_sslmode"`
+}
 
 // Represents a product in the inventory
 type Product struct {
@@ -39,11 +54,38 @@ var categories = []Category{
 }
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Load configuration
+
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	if _, err := os.Stat(".env"); err == nil {
+		viper.SetConfigFile(".env")
+		_ = viper.ReadInConfig()
 	}
-	addr := ":" + port
+
+	config := Config{
+		APP_Port:    viper.GetInt("APP_PORT"),
+		DB_Host:     viper.GetString("DB_HOST"),
+		DB_Port:     viper.GetInt("DB_PORT"),
+		DB_User:     viper.GetString("DB_USER"),
+		DB_Password: viper.GetString("DB_PASSWORD"),
+		DB_Name:     viper.GetString("DB_NAME"),
+		DB_SSLMode:  viper.GetString("DB_SSLMODE"),
+	}
+
+	dsn := fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		config.DB_User, config.DB_Password, config.DB_Host, strconv.Itoa(config.DB_Port), config.DB_Name, config.DB_SSLMode,
+	)
+	db, db_err := database.Connect(dsn)
+	if db_err != nil {
+		panic(db_err)
+	}
+	defer db.Close()
+
+	port := config.APP_Port
+	addr := ":" + strconv.Itoa(port)
 	fmt.Printf("Starting server on %s\n", addr)
 
 	// Handle API routes
