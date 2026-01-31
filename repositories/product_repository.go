@@ -1,3 +1,5 @@
+package repositories
+
 import (
 	"database/sql"
 	"errors"
