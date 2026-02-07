@@ -1,0 +1,357 @@
+openapi: 3.0.3
+info:
+  title: Kasir API
+  description: Backend API untuk aplikasi sistem kasir
+  version: 1.0.0
+  contact:
+    name: Kasir Dev
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /:
+    get:
+      tags:
+        - General
+      summary: Root endpoint
+      responses:
+        "200":
+          description: Pesan selamat datang
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Hello, Ini Backend Program Kasir!"
+
+  /health:
+    get:
+      tags:
+        - General
+      summary: Health check
+      responses:
+        "200":
+          description: Status layanan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: "Service is running"
+
+  /categories:
+    get:
+      tags:
+        - Categories
+      summary: Ambil semua kategori
+      responses:
+        "200":
+          description: Daftar kategori
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags:
+        - Categories
+      summary: Buat kategori baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Kategori berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    get:
+      tags:
+        - Categories
+      summary: Ambil kategori berdasarkan ID
+      responses:
+        "200":
+          description: Detail kategori
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Categories
+      summary: Update kategori
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "200":
+          description: Kategori berhasil diupdate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Categories
+      summary: Hapus kategori
+      responses:
+        "200":
+          description: Kategori berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Category deleted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/products:
+    get:
+      tags:
+        - Products
+      summary: Ambil semua produk
+      responses:
+        "200":
+          description: Daftar produk
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags:
+        - Products
+      summary: Buat produk baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Produk berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/products/{id}:
+    parameters:
+      - $ref: "#/components/parameters/IdParam"
+    get:
+      tags:
+        - Products
+      summary: Ambil produk berdasarkan ID
+      responses:
+        "200":
+          description: Detail produk
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Products
+      summary: Update produk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "200":
+          description: Produk berhasil diupdate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Products
+      summary: Hapus produk
+      responses:
+        "200":
+          description: Produk berhasil dihapus
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Product deleted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
+
+  schemas:
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Electronics
+        description:
+          type: string
+          example: Electronic devices and gadgets
+
+    CategoryInput:
+      type: object
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          example: Electronics
+        description:
+          type: string
+          example: Electronic devices and gadgets
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Laptop
+        price:
+          type: number
+          format: double
+          example: 999.99
+        stock:
+          type: integer
+          example: 10
+        category_id:
+          type: integer
+          example: 1
+        category_name:
+          type: string
+          example: Electronics
+
+    ProductInput:
+      type: object
+      required:
+        - name
+        - price
+        - stock
+        - category_id
+      properties:
+        name:
+          type: string
+          example: Laptop
+        price:
+          type: number
+          format: double
+          example: 999.99
+        stock:
+          type: integer
+          example: 10
+        category_id:
+          type: integer
+          example: 1
+
+  responses:
+    BadRequest:
+      description: Request tidak valid
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Invalid product ID"
+    NotFound:
+      description: Data tidak ditemukan
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "produk tidak ditemukan"
+    InternalError:
+      description: Error internal server
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"

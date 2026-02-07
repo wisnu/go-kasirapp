@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,6 +13,9 @@ import (
 	"kasir-api/repositories"
 	"kasir-api/services"
 )
+
+//go:embed openapi.yaml
+var openapiSpec embed.FS
 
 func main() {
 	// Load configuration
@@ -46,6 +50,10 @@ func main() {
 	http.HandleFunc("/categories", categoryHandler.Handle)
 	http.HandleFunc("/categories/", categoryHandler.Handle)
 
+	// API docs (Scalar)
+	http.HandleFunc("/docs", handleDocs)
+	http.HandleFunc("/docs/openapi.yaml", handleOpenAPISpec)
+
 	// Health check
 	http.HandleFunc("/health", handleHealth)
 
@@ -54,6 +62,38 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func handleDocs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kasir API – Docs</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+    <script>
+      Scalar.createApiReference('#app', {
+        url: '/docs/openapi.yaml',
+      })
+    </script>
+  </body>
+</html>`)
+}
+
+func handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
+	spec, err := openapiSpec.ReadFile("openapi.yaml")
+	if err != nil {
+		http.Error(w, "failed to read spec", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/yaml")
+	w.Write(spec)
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
