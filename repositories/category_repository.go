@@ -92,3 +92,29 @@ func (repo *CategoryRepository) Delete(id int) error {
 
 	return err
 }
+
+// SearchByName - search categories by name (partial match)
+func (repo *CategoryRepository) SearchByName(name string) ([]models.Category, error) {
+	query := "SELECT id, name, description FROM categories WHERE name ILIKE $1"
+	
+	// Add wildcards for partial matching
+	searchPattern := "%" + name + "%"
+	
+	rows, err := repo.db.Query(query, searchPattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	categories := make([]models.Category, 0)
+	for rows.Next() {
+		var c models.Category
+		err := rows.Scan(&c.ID, &c.Name, &c.Description)
+		if err != nil {
+			return nil, err
+		}
+		categories = append(categories, c)
+	}
+
+	return categories, nil
+}

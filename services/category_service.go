@@ -32,3 +32,7 @@ func (s *CategoryService) Update(category *models.Category) error {
 func (s *CategoryService) Delete(id int) error {
 	return s.repo.Delete(id)
 }
+
+func (s *CategoryService) SearchByName(name string) ([]models.Category, error) {
+	return s.repo.SearchByName(name)
+}

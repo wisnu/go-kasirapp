@@ -52,16 +52,51 @@ paths:
     get:
       tags:
         - Categories
-      summary: Ambil semua kategori
+      summary: Ambil semua kategori atau cari kategori berdasarkan nama
+      description: |
+        Mengambil daftar semua kategori. Jika parameter query `name` diberikan,
+        akan melakukan pencarian kategori dengan nama yang mengandung kata kunci
+        tersebut (case-insensitive).
+        
+        **Contoh request:**
+        - Semua kategori: `GET /categories`
+        - Cari berdasarkan nama: `GET /categories?name=Elec`
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter kategori berdasarkan nama (partial match, case-insensitive)
+          example: Elec
       responses:
         "200":
-          description: Daftar kategori
+          description: Daftar kategori (semua atau hasil pencarian)
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Category"
+              examples:
+                allCategories:
+                  summary: Semua kategori
+                  value:
+                    - id: 1
+                      name: "Electronics"
+                      description: "Electronic devices and gadgets"
+                    - id: 2
+                      name: "Accessories"
+                      description: "Related accessories and add-ons"
+                searchResults:
+                  summary: Hasil pencarian untuk "Elec"
+                  value:
+                    - id: 1
+                      name: "Electronics"
+                      description: "Electronic devices and gadgets"
+                    - id: 3
+                      name: "Electronic Accessories"
+                      description: "Accessories for electronic devices"
         "500":
           $ref: "#/components/responses/InternalError"
     post:
