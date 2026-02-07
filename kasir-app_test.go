@@ -422,4 +422,78 @@ func TestCategoriesGetUpdateDelete(t *testing.T) {
 	}
 }
 
+func TestProductsSearch(t *testing.T) {
+	var handler http.HandlerFunc
+	
+	if isIntegration() {
+		// In integration mode, we'll search against real data
+		// No setup needed, just use nil handler
+		handler = nil
+	} else {
+		// Unit mode: setup mock
+		h, mock := setupProductHandler(t)
+		handler = h.Handle
+
+		// Mock search results for "Lap" (should match "Laptop")
+		rows := sqlmock.NewRows([]string{"id", "name", "price", "stock", "category_name"}).
+			AddRow(1, "Laptop", 999.99, 10, "Electronics").
+			AddRow(5, "Laptop Pro", 1299.99, 5, "Electronics")
+		mock.ExpectQuery("SELECT p.id, p.name, p.price, p.stock, c.name").
+			WithArgs("%Lap%").
+			WillReturnRows(rows)
+
+		// Mock search with no results
+		mock.ExpectQuery("SELECT p.id, p.name, p.price, p.stock, c.name").
+			WithArgs("%NonExistent%").
+			WillReturnRows(sqlmock.NewRows([]string{"id", "name", "price", "stock", "category_name"}))
+
+		defer func() {
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Fatalf("unmet expectations: %v", err)
+			}
+		}()
+	}
+
+	// Test 1: Search with results
+	rec := doRequest(t, http.MethodGet, "/api/products?name=Lap", nil, handler)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("search products status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	var results []models.Product
+	if err := json.NewDecoder(rec.Body).Decode(&results); err != nil {
+		t.Fatalf("decode search results: %v", err)
+	}
+	
+	// In unit mode, we expect exactly 2 results
+	if !isIntegration() && len(results) != 2 {
+		t.Fatalf("search results len = %d, want 2", len(results))
+	}
+	
+	// In integration mode, we just verify we got a valid response
+	if isIntegration() {
+		t.Logf("integration mode: found %d products matching 'Lap'", len(results))
+	} else {
+		// Verify the results contain "Laptop" in the name
+		for _, p := range results {
+			if p.Name != "Laptop" && p.Name != "Laptop Pro" {
+				t.Fatalf("unexpected product in search results: %s", p.Name)
+			}
+		}
+	}
+
+	// Test 2: Search with no results
+	rec = doRequest(t, http.MethodGet, "/api/products?name=NonExistent", nil, handler)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("search products (no results) status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	var emptyResults []models.Product
+	if err := json.NewDecoder(rec.Body).Decode(&emptyResults); err != nil {
+		t.Fatalf("decode empty search results: %v", err)
+	}
+	
+	if !isIntegration() && len(emptyResults) != 0 {
+		t.Fatalf("search (no results) len = %d, want 0", len(emptyResults))
+	}
+}
+
 func itoa(n int) string { return strconv.Itoa(n) }

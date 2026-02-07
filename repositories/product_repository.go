@@ -102,3 +102,34 @@ func (repo *ProductRepository) Delete(id int) error {
 
 	return err
 }
+
+// SearchByName - search products by name (partial match)
+func (repo *ProductRepository) SearchByName(name string) ([]models.Product, error) {
+	query := `SELECT p.id, p.name, p.price, p.stock, c.name
+		FROM products p
+		LEFT JOIN categories c ON p.category_id = c.id
+		WHERE p.name ILIKE $1`
+	
+	// Add wildcards for partial matching
+	searchPattern := "%" + name + "%"
+	
+	rows, err := repo.db.Query(query, searchPattern)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	products := make([]models.Product, 0)
+	for rows.Next() {
+		var p models.Product
+		var categoryName sql.NullString
+		err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &categoryName)
+		if err != nil {
+			return nil, err
+		}
+		p.CategoryName = categoryName.String
+		products = append(products, p)
+	}
+
+	return products, nil
+}

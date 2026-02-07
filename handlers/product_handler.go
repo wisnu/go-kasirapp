@@ -61,8 +61,22 @@ func (h *ProductHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle GET all products
+	// Handle GET all products or search by name
 	if r.Method == http.MethodGet {
+		// Check if search query parameter is present
+		searchName := r.URL.Query().Get("name")
+		if searchName != "" {
+			// Search by name
+			products, err := h.service.SearchByName(searchName)
+			if err != nil {
+				WriteError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			WriteJSON(w, http.StatusOK, products)
+			return
+		}
+		
+		// Get all products
 		products, err := h.service.GetAll()
 		if err != nil {
 			WriteError(w, http.StatusInternalServerError, err.Error())

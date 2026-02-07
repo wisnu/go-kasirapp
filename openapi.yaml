@@ -149,16 +149,63 @@ paths:
     get:
       tags:
         - Products
-      summary: Ambil semua produk
+      summary: Ambil semua produk atau cari produk berdasarkan nama
+      description: |
+        Mengambil daftar semua produk. Jika parameter query `name` diberikan,
+        akan melakukan pencarian produk dengan nama yang mengandung kata kunci
+        tersebut (case-insensitive).
+        
+        **Contoh request:**
+        - Semua produk: `GET /api/products`
+        - Cari berdasarkan nama: `GET /api/products?name=Lap`
+      parameters:
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter produk berdasarkan nama (partial match, case-insensitive)
+          example: Lap
       responses:
         "200":
-          description: Daftar produk
+          description: Daftar produk (semua atau hasil pencarian)
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Product"
+              examples:
+                allProducts:
+                  summary: Semua produk
+                  value:
+                    - id: 1
+                      name: "Laptop"
+                      price: 999.99
+                      stock: 10
+                      category_id: 1
+                      category_name: "Electronics"
+                    - id: 2
+                      name: "Smartphone"
+                      price: 499.99
+                      stock: 25
+                      category_id: 1
+                      category_name: "Electronics"
+                searchResults:
+                  summary: Hasil pencarian untuk "Lap"
+                  value:
+                    - id: 1
+                      name: "Laptop"
+                      price: 999.99
+                      stock: 10
+                      category_id: 1
+                      category_name: "Electronics"
+                    - id: 5
+                      name: "Laptop Pro"
+                      price: 1299.99
+                      stock: 5
+                      category_id: 1
+                      category_name: "Electronics"
         "500":
           $ref: "#/components/responses/InternalError"
     post:
