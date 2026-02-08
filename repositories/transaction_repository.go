@@ -85,16 +85,50 @@ func (repo *TransactionRepository) Checkout(req *models.CheckoutRequest) (*model
 		return nil, fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	// Insert transaction details
-	for i := range details {
-		err = tx.QueryRow(
-			"INSERT INTO transaction_details (transaction_id, product_id, quantity, subtotal) VALUES ($1, $2, $3, $4) RETURNING id",
-			transactionID, details[i].ProductID, details[i].Quantity, details[i].Subtotal,
-		).Scan(&details[i].ID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create transaction detail: %w", err)
+	// Insert transaction details using bulk insert
+	if len(details) > 0 {
+		// Build bulk insert query with multiple VALUES
+		// Example result: VALUES ($1, $2, $3, $4), ($5, $6, $7, $8), ($9, $10, $11, $12), ...
+		query := "INSERT INTO transaction_details (transaction_id, product_id, quantity, subtotal) VALUES "
+		values := []interface{}{}
+		
+		for i, detail := range details {
+			if i > 0 {
+				query += ", "
+			}
+			// Calculate placeholder positions: each row has 4 values
+			// Row 0: $1, $2, $3, $4 | Row 1: $5, $6, $7, $8 | Row 2: $9, $10, $11, $12, dst.
+			pos := i * 4
+			query += fmt.Sprintf("($%d, $%d, $%d, $%d)", pos+1, pos+2, pos+3, pos+4)
+			
+			values = append(values, transactionID, detail.ProductID, detail.Quantity, detail.Subtotal)
 		}
-		details[i].TransactionID = transactionID
+		query += " RETURNING id"
+		
+		// Execute bulk insert
+		rows, err := tx.Query(query, values...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create transaction details: %w", err)
+		}
+		defer rows.Close()
+		
+		// Scan the returned IDs and update details
+		i := 0
+		for rows.Next() {
+			if i >= len(details) {
+				return nil, fmt.Errorf("unexpected number of returned IDs")
+			}
+			err = rows.Scan(&details[i].ID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to scan transaction detail ID: %w", err)
+			}
+			details[i].TransactionID = transactionID
+			i++
+		}
+		
+		if err = rows.Err(); err != nil {
+			return nil, fmt.Errorf("error iterating transaction detail results: %w", err)
+		}
 	}
 
 	// Get the created transaction with timestamp
