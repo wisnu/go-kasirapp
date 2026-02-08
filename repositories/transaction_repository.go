@@ -192,7 +192,7 @@ func (repo *TransactionRepository) GetTodayReport() (*models.DailyReport, error)
 			COALESCE(SUM(total_amount), 0) as total_revenue,
 			COUNT(*) as total_transaksi
 		FROM transactions
-		WHERE DATE(created_at) = CURRENT_DATE
+		WHERE transaction_date = CURRENT_DATE
 	`).Scan(&report.TotalRevenue, &report.TotalTransaksi)
 	
 	if err != nil {
@@ -210,7 +210,7 @@ func (repo *TransactionRepository) GetTodayReport() (*models.DailyReport, error)
 		FROM transaction_details td
 		INNER JOIN transactions t ON td.transaction_id = t.id
 		INNER JOIN products p ON td.product_id = p.id
-		WHERE DATE(t.created_at) = CURRENT_DATE
+		WHERE t.transaction_date = CURRENT_DATE
 		GROUP BY p.id, p.name
 		ORDER BY qty_terjual DESC
 		LIMIT 1
@@ -247,7 +247,7 @@ func (repo *TransactionRepository) GetReportByDateRange(startDate, endDate strin
 			COALESCE(SUM(total_amount), 0) as total_revenue,
 			COUNT(*) as total_transaksi
 		FROM transactions
-		WHERE DATE(created_at) >= $1 AND DATE(created_at) <= $2
+		WHERE transaction_date >= $1 AND transaction_date <= $2
 	`, startDate, endDate).Scan(&report.TotalRevenue, &report.TotalTransaksi)
 	
 	if err != nil {
@@ -265,7 +265,7 @@ func (repo *TransactionRepository) GetReportByDateRange(startDate, endDate strin
 		FROM transaction_details td
 		INNER JOIN transactions t ON td.transaction_id = t.id
 		INNER JOIN products p ON td.product_id = p.id
-		WHERE DATE(t.created_at) >= $1 AND DATE(t.created_at) <= $2
+		WHERE t.transaction_date >= $1 AND t.transaction_date <= $2
 		GROUP BY p.id, p.name
 		ORDER BY qty_terjual DESC
 		LIMIT 1

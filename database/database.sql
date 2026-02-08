@@ -40,6 +40,7 @@ SELECT setval('products_id_seq', (SELECT MAX(id) FROM products));
 CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
     total_amount INT NOT NULL,
+    transaction_date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
