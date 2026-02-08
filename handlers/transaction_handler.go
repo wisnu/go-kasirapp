@@ -92,3 +92,18 @@ func (h *TransactionHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 }
+
+func (h *TransactionHandler) HandleDailyReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	report, err := h.service.GetDailyReport()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, report)
+}

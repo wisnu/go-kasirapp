@@ -491,6 +491,37 @@ paths:
                     type: string
                     example: "transaction not found"
 
+  /api/report/hari-ini:
+    get:
+      tags:
+        - Reports
+      summary: Laporan transaksi hari ini
+      description: |
+        Mengambil ringkasan laporan transaksi untuk hari ini, meliputi:
+        - Total revenue (pendapatan) hari ini
+        - Total jumlah transaksi hari ini
+        - Produk terlaris hari ini (berdasarkan quantity terjual)
+        
+        **Contoh request:**
+        ```
+        GET /api/report/hari-ini
+        ```
+      responses:
+        "200":
+          description: Laporan hari ini
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyReport"
+              example:
+                total_revenue: 45000
+                total_transaksi: 5
+                produk_terlaris:
+                  nama: "Indomie Goreng"
+                  qty_terjual: 12
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   parameters:
     IdParam:
@@ -649,6 +680,32 @@ components:
           description: Jumlah produk yang dibeli
           minimum: 1
           example: 2
+
+    DailyReport:
+      type: object
+      properties:
+        total_revenue:
+          type: integer
+          description: "Total pendapatan hari ini"
+          example: 45000
+        total_transaksi:
+          type: integer
+          description: "Total jumlah transaksi hari ini"
+          example: 5
+        produk_terlaris:
+          $ref: "#/components/schemas/ProdukTerlaris"
+
+    ProdukTerlaris:
+      type: object
+      properties:
+        nama:
+          type: string
+          description: "Nama produk terlaris"
+          example: "Indomie Goreng"
+        qty_terjual:
+          type: integer
+          description: "Jumlah quantity terjual"
+          example: 12
 
   responses:
     BadRequest:

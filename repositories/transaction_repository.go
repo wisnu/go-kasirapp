@@ -181,3 +181,58 @@ func (repo *TransactionRepository) GetByID(id int) (*models.Transaction, error) 
 	transaction.Details = details
 	return &transaction, nil
 }
+
+// GetDailyReport - get today's report summary
+func (repo *TransactionRepository) GetDailyReport() (*models.DailyReport, error) {
+	var report models.DailyReport
+
+	// Get total revenue and total transactions for today
+	err := repo.db.QueryRow(`
+		SELECT 
+			COALESCE(SUM(total_amount), 0) as total_revenue,
+			COUNT(*) as total_transaksi
+		FROM transactions
+		WHERE DATE(created_at) = CURRENT_DATE
+	`).Scan(&report.TotalRevenue, &report.TotalTransaksi)
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to get daily summary: %w", err)
+	}
+
+	// Get best selling product for today
+	var productName sql.NullString
+	var qtyTerjual sql.NullInt64
+	
+	err = repo.db.QueryRow(`
+		SELECT 
+			p.name,
+			SUM(td.quantity) as qty_terjual
+		FROM transaction_details td
+		INNER JOIN transactions t ON td.transaction_id = t.id
+		INNER JOIN products p ON td.product_id = p.id
+		WHERE DATE(t.created_at) = CURRENT_DATE
+		GROUP BY p.id, p.name
+		ORDER BY qty_terjual DESC
+		LIMIT 1
+	`).Scan(&productName, &qtyTerjual)
+
+	// If no transactions today, return report with empty best seller
+	if err == sql.ErrNoRows {
+		report.ProdukTerlaris = models.ProdukTerlaris{
+			Nama:       "",
+			QtyTerjual: 0,
+		}
+		return &report, nil
+	}
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to get best selling product: %w", err)
+	}
+
+	report.ProdukTerlaris = models.ProdukTerlaris{
+		Nama:       productName.String,
+		QtyTerjual: int(qtyTerjual.Int64),
+	}
+
+	return &report, nil
+}

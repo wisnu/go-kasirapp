@@ -24,3 +24,7 @@ func (s *TransactionService) GetAll() ([]models.Transaction, error) {
 func (s *TransactionService) GetByID(id int) (*models.Transaction, error) {
 	return s.repo.GetByID(id)
 }
+
+func (s *TransactionService) GetDailyReport() (*models.DailyReport, error) {
+	return s.repo.GetDailyReport()
+}
