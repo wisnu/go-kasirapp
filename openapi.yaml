@@ -522,6 +522,76 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/report:
+    get:
+      tags:
+        - Reports
+      summary: Laporan transaksi berdasarkan range tanggal
+      description: |
+        Mengambil ringkasan laporan transaksi untuk periode tertentu, meliputi:
+        - Total revenue (pendapatan) dalam periode
+        - Total jumlah transaksi dalam periode
+        - Produk terlaris dalam periode (berdasarkan quantity terjual)
+        
+        **Contoh request:**
+        ```
+        GET /api/report?start_date=2026-01-01&end_date=2026-02-01
+        ```
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-01-01"
+          description: Tanggal awal periode laporan (format YYYY-MM-DD)
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-02-01"
+          description: Tanggal akhir periode laporan (format YYYY-MM-DD)
+      responses:
+        "200":
+          description: Laporan periode yang ditentukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyReport"
+              example:
+                total_revenue: 150000
+                total_transaksi: 15
+                produk_terlaris:
+                  nama: "Laptop"
+                  qty_terjual: 25
+        "400":
+          description: Parameter tidak valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+              examples:
+                missingStartDate:
+                  summary: start_date tidak diberikan
+                  value:
+                    error: "start_date parameter is required (format: YYYY-MM-DD)"
+                missingEndDate:
+                  summary: end_date tidak diberikan
+                  value:
+                    error: "end_date parameter is required (format: YYYY-MM-DD)"
+                invalidFormat:
+                  summary: Format tanggal tidak valid
+                  value:
+                    error: "Invalid date format. Use YYYY-MM-DD"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   parameters:
     IdParam:

@@ -25,6 +25,10 @@ func (s *TransactionService) GetByID(id int) (*models.Transaction, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *TransactionService) GetDailyReport() (*models.DailyReport, error) {
-	return s.repo.GetDailyReport()
+func (s *TransactionService) GetTodayReport() (*models.DailyReport, error) {
+	return s.repo.GetTodayReport()
+}
+
+func (s *TransactionService) GetReportByDateRange(startDate, endDate string) (*models.DailyReport, error) {
+	return s.repo.GetReportByDateRange(startDate, endDate)
 }

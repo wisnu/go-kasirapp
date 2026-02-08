@@ -93,13 +93,49 @@ func (h *TransactionHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 }
 
-func (h *TransactionHandler) HandleDailyReport(w http.ResponseWriter, r *http.Request) {
+func (h *TransactionHandler) HandleTodayReport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	report, err := h.service.GetDailyReport()
+	report, err := h.service.GetTodayReport()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, report)
+}
+
+func (h *TransactionHandler) HandleReportByDateRange(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		WriteError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Parse query parameters
+	startDate := r.URL.Query().Get("start_date")
+	endDate := r.URL.Query().Get("end_date")
+
+	// Validate required parameters
+	if startDate == "" {
+		WriteError(w, http.StatusBadRequest, "start_date parameter is required (format: YYYY-MM-DD)")
+		return
+	}
+	if endDate == "" {
+		WriteError(w, http.StatusBadRequest, "end_date parameter is required (format: YYYY-MM-DD)")
+		return
+	}
+
+	// Optional: Validate date format (basic check)
+	// You could add more sophisticated date validation here
+	if len(startDate) != 10 || len(endDate) != 10 {
+		WriteError(w, http.StatusBadRequest, "Invalid date format. Use YYYY-MM-DD")
+		return
+	}
+
+	report, err := h.service.GetReportByDateRange(startDate, endDate)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return

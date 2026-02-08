@@ -57,7 +57,8 @@ func main() {
 	http.HandleFunc("/api/checkout", transactionHandler.HandleCheckout)
 	http.HandleFunc("/api/transactions", transactionHandler.Handle)
 	http.HandleFunc("/api/transactions/", transactionHandler.Handle)
-	http.HandleFunc("/api/report/hari-ini", transactionHandler.HandleDailyReport)
+	http.HandleFunc("/api/report/hari-ini", transactionHandler.HandleTodayReport)
+	http.HandleFunc("/api/report", transactionHandler.HandleReportByDateRange)
 
 	// API docs (Scalar)
 	http.HandleFunc("/docs", handleDocs)

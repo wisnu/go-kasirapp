@@ -182,8 +182,8 @@ func (repo *TransactionRepository) GetByID(id int) (*models.Transaction, error) 
 	return &transaction, nil
 }
 
-// GetDailyReport - get today's report summary
-func (repo *TransactionRepository) GetDailyReport() (*models.DailyReport, error) {
+// GetTodayReport - get today's report summary
+func (repo *TransactionRepository) GetTodayReport() (*models.DailyReport, error) {
 	var report models.DailyReport
 
 	// Get total revenue and total transactions for today
@@ -217,6 +217,61 @@ func (repo *TransactionRepository) GetDailyReport() (*models.DailyReport, error)
 	`).Scan(&productName, &qtyTerjual)
 
 	// If no transactions today, return report with empty best seller
+	if err == sql.ErrNoRows {
+		report.ProdukTerlaris = models.ProdukTerlaris{
+			Nama:       "",
+			QtyTerjual: 0,
+		}
+		return &report, nil
+	}
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to get best selling product: %w", err)
+	}
+
+	report.ProdukTerlaris = models.ProdukTerlaris{
+		Nama:       productName.String,
+		QtyTerjual: int(qtyTerjual.Int64),
+	}
+
+	return &report, nil
+}
+
+// GetReportByDateRange - get report summary for a date range
+func (repo *TransactionRepository) GetReportByDateRange(startDate, endDate string) (*models.DailyReport, error) {
+	var report models.DailyReport
+
+	// Get total revenue and total transactions for date range
+	err := repo.db.QueryRow(`
+		SELECT 
+			COALESCE(SUM(total_amount), 0) as total_revenue,
+			COUNT(*) as total_transaksi
+		FROM transactions
+		WHERE DATE(created_at) >= $1 AND DATE(created_at) <= $2
+	`, startDate, endDate).Scan(&report.TotalRevenue, &report.TotalTransaksi)
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to get report summary: %w", err)
+	}
+
+	// Get best selling product for date range
+	var productName sql.NullString
+	var qtyTerjual sql.NullInt64
+	
+	err = repo.db.QueryRow(`
+		SELECT 
+			p.name,
+			SUM(td.quantity) as qty_terjual
+		FROM transaction_details td
+		INNER JOIN transactions t ON td.transaction_id = t.id
+		INNER JOIN products p ON td.product_id = p.id
+		WHERE DATE(t.created_at) >= $1 AND DATE(t.created_at) <= $2
+		GROUP BY p.id, p.name
+		ORDER BY qty_terjual DESC
+		LIMIT 1
+	`, startDate, endDate).Scan(&productName, &qtyTerjual)
+
+	// If no transactions in date range, return report with empty best seller
 	if err == sql.ErrNoRows {
 		report.ProdukTerlaris = models.ProdukTerlaris{
 			Nama:       "",
