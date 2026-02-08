@@ -569,4 +569,67 @@ func TestCategoriesSearch(t *testing.T) {
 	}
 }
 
+func TestTodayReport(t *testing.T) {
+	// This endpoint doesn't require mocking complex queries in unit mode,
+	// so we'll primarily test in integration mode
+	// In unit mode, we'd need to mock transaction queries which is complex
+	
+	if !isIntegration() {
+		t.Skip("Skipping today report test in unit mode (requires complex transaction mocking)")
+	}
+	
+	// GET today's report
+	rec := doRequest(t, http.MethodGet, "/api/report/hari-ini", nil, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("today report status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	
+	var report models.DailyReport
+	if err := json.NewDecoder(rec.Body).Decode(&report); err != nil {
+		t.Fatalf("decode today report: %v", err)
+	}
+	
+	// Verify structure (values may be 0 if no transactions today)
+	t.Logf("Today report: revenue=%d, transactions=%d, best_product=%s (qty=%d)",
+		report.TotalRevenue, report.TotalTransaksi, report.ProdukTerlaris.Nama, report.ProdukTerlaris.QtyTerjual)
+}
+
+func TestReportByDateRange(t *testing.T) {
+	if !isIntegration() {
+		t.Skip("Skipping date range report test in unit mode (requires complex transaction mocking)")
+	}
+	
+	// Test 1: Valid date range
+	rec := doRequest(t, http.MethodGet, "/api/report?start_date=2026-01-01&end_date=2026-12-31", nil, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("date range report status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	
+	var report models.DailyReport
+	if err := json.NewDecoder(rec.Body).Decode(&report); err != nil {
+		t.Fatalf("decode date range report: %v", err)
+	}
+	
+	t.Logf("Date range report (2026): revenue=%d, transactions=%d, best_product=%s (qty=%d)",
+		report.TotalRevenue, report.TotalTransaksi, report.ProdukTerlaris.Nama, report.ProdukTerlaris.QtyTerjual)
+	
+	// Test 2: Missing start_date
+	rec = doRequest(t, http.MethodGet, "/api/report?end_date=2026-12-31", nil, nil)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("report missing start_date status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	
+	// Test 3: Missing end_date
+	rec = doRequest(t, http.MethodGet, "/api/report?start_date=2026-01-01", nil, nil)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("report missing end_date status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	
+	// Test 4: Invalid date format
+	rec = doRequest(t, http.MethodGet, "/api/report?start_date=01-01-26&end_date=2026-12-31", nil, nil)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("report invalid date format status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+}
+
 func itoa(n int) string { return strconv.Itoa(n) }

@@ -294,6 +294,46 @@ assert_status "checkout insufficient stock returns 400" "400"
 assert_contains "error message insufficient stock" "insufficient stock"
 
 # ===========================================================================
+# 8. REPORTS
+# ===========================================================================
+
+# --- GET today's report ---
+run "GET /api/report/hari-ini" \
+    "$BASE/api/report/hari-ini"
+assert_status "today report returns 200" "200"
+assert_contains "today report has total_revenue" "total_revenue"
+assert_contains "today report has total_transaksi" "total_transaksi"
+assert_contains "today report has produk_terlaris" "produk_terlaris"
+assert_contains "today report has nama" "nama"
+assert_contains "today report has qty_terjual" "qty_terjual"
+
+# --- GET report by date range ---
+run "GET /api/report?start_date=2026-01-01&end_date=2026-12-31" \
+    "$BASE/api/report?start_date=2026-01-01&end_date=2026-12-31"
+assert_status "date range report returns 200" "200"
+assert_contains "date range report has total_revenue" "total_revenue"
+assert_contains "date range report has total_transaksi" "total_transaksi"
+assert_contains "date range report has produk_terlaris" "produk_terlaris"
+
+# --- GET report missing start_date ---
+run "GET /api/report?end_date=2026-12-31" \
+    "$BASE/api/report?end_date=2026-12-31"
+assert_status "report missing start_date returns 400" "400"
+assert_contains "error message start_date required" "start_date parameter is required"
+
+# --- GET report missing end_date ---
+run "GET /api/report?start_date=2026-01-01" \
+    "$BASE/api/report?start_date=2026-01-01"
+assert_status "report missing end_date returns 400" "400"
+assert_contains "error message end_date required" "end_date parameter is required"
+
+# --- GET report with invalid date format ---
+run "GET /api/report?start_date=01-01-2026&end_date=2026-12-31" \
+    "$BASE/api/report?start_date=01-01-2026&end_date=2026-12-31"
+assert_status "report invalid date format returns 400" "400"
+assert_contains "error message invalid format" "Invalid date format"
+
+# ===========================================================================
 # SUMMARY
 # ===========================================================================
 echo ""
