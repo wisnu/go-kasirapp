@@ -7,6 +7,8 @@ info:
     name: Kasir Dev
 
 servers:
+  - url: https://go-kasirapp-wisnu2289-bfvmtf3o.leapcell.dev/
+    description: Deployment server
   - url: http://localhost:8080
     description: Local development server
 
