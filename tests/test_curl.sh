@@ -200,6 +200,100 @@ run "POST /api/products (invalid category_id)" \
 assert_status "invalid category_id returns 500" "500"
 
 # ===========================================================================
+# 5. PRODUCT SEARCH
+# ===========================================================================
+
+# --- Search products by name (should find "Laptop") ---
+run "GET /api/products?name=Lap" \
+    "$BASE/api/products?name=Lap"
+assert_status "search products returns 200" "200"
+assert_contains "search results contain Laptop" "Laptop"
+
+# --- Search products with no results ---
+run "GET /api/products?name=NonExistent" \
+    "$BASE/api/products?name=NonExistent"
+assert_status "search products (no results) returns 200" "200"
+# Body should be empty array []
+assert_contains "search results empty array" "[]"
+
+# ===========================================================================
+# 6. CATEGORY SEARCH
+# ===========================================================================
+
+# --- Search categories by name (should find "Electronics") ---
+run "GET /categories?name=Elec" \
+    "$BASE/categories?name=Elec"
+assert_status "search categories returns 200" "200"
+assert_contains "search results contain Electronics" "Electronics"
+
+# --- Search categories with no results ---
+run "GET /categories?name=NonExistent" \
+    "$BASE/categories?name=NonExistent"
+assert_status "search categories (no results) returns 200" "200"
+assert_contains "search results empty array" "[]"
+
+# ===========================================================================
+# 7. TRANSACTIONS / CHECKOUT
+# ===========================================================================
+
+# --- POST checkout (create transaction) ---
+# Assuming product id 1 (Laptop) and id 2 (Smartphone) exist from seed data
+run "POST /api/checkout" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"items":[{"product_id":1,"quantity":1},{"product_id":2,"quantity":2}]}' \
+    "$BASE/api/checkout"
+assert_status "checkout returns 201" "201"
+assert_contains "transaction has total_amount" "total_amount"
+assert_contains "transaction has details" "details"
+assert_contains "transaction detail has product_name" "product_name"
+
+# Ambil transaction ID dari response
+TRANSACTION_ID=$(echo "$BODY" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+echo "INFO: transaction id = $TRANSACTION_ID"
+
+# --- GET all transactions ---
+run "GET /api/transactions" \
+    "$BASE/api/transactions"
+assert_status "list transactions returns 200" "200"
+assert_contains "transactions list has created_at" "created_at"
+
+# --- GET transaction by ID ---
+run "GET /api/transactions/$TRANSACTION_ID" \
+    "$BASE/api/transactions/$TRANSACTION_ID"
+assert_status "get transaction by id returns 200" "200"
+assert_contains "transaction has details array" "details"
+assert_contains "transaction detail has quantity" "quantity"
+assert_contains "transaction detail has subtotal" "subtotal"
+
+# --- POST checkout with empty items (should fail) ---
+run "POST /api/checkout (empty items)" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"items":[]}' \
+    "$BASE/api/checkout"
+assert_status "checkout empty items returns 400" "400"
+assert_contains "error message empty items" "Items cannot be empty"
+
+# --- POST checkout with invalid product_id (should fail) ---
+run "POST /api/checkout (invalid product)" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"items":[{"product_id":9999,"quantity":1}]}' \
+    "$BASE/api/checkout"
+assert_status "checkout invalid product returns 400" "400"
+assert_contains "error message product not found" "not found"
+
+# --- POST checkout with excessive quantity (insufficient stock) ---
+run "POST /api/checkout (insufficient stock)" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"items":[{"product_id":1,"quantity":99999}]}' \
+    "$BASE/api/checkout"
+assert_status "checkout insufficient stock returns 400" "400"
+assert_contains "error message insufficient stock" "insufficient stock"
+
+# ===========================================================================
 # SUMMARY
 # ===========================================================================
 echo ""
