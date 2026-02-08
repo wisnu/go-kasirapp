@@ -39,6 +39,10 @@ func main() {
 	categoryService := services.NewCategoryService(categoryRepo)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
+	transactionRepo := repositories.NewTransactionRepository(db)
+	transactionService := services.NewTransactionService(transactionRepo)
+	transactionHandler := handlers.NewTransactionHandler(transactionService)
+
 	port := cfg.App.Port
 	addr := ":" + strconv.Itoa(port)
 	fmt.Printf("Starting server on %s\n", addr)
@@ -49,6 +53,10 @@ func main() {
 
 	http.HandleFunc("/categories", categoryHandler.Handle)
 	http.HandleFunc("/categories/", categoryHandler.Handle)
+
+	http.HandleFunc("/api/checkout", transactionHandler.HandleCheckout)
+	http.HandleFunc("/api/transactions", transactionHandler.Handle)
+	http.HandleFunc("/api/transactions/", transactionHandler.Handle)
 
 	// API docs (Scalar)
 	http.HandleFunc("/docs", handleDocs)
