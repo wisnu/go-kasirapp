@@ -535,9 +535,12 @@ paths:
         - Total jumlah transaksi dalam periode
         - Produk terlaris dalam periode (berdasarkan quantity terjual)
         
+        **Catatan:** Nilai tanggal di bawah akan otomatis disesuaikan dengan tanggal server saat Anda mengakses dokumentasi ini.
+        Contoh menggunakan periode 7 hari terakhir dari tanggal server.
+        
         **Contoh request:**
         ```
-        GET /api/report?start_date=2026-01-01&end_date=2026-02-01
+        GET /api/report?start_date={{START_DATE}}&end_date={{END_DATE}}
         ```
       parameters:
         - name: start_date
@@ -546,16 +549,16 @@ paths:
           schema:
             type: string
             format: date
-            example: "2026-01-01"
-          description: Tanggal awal periode laporan (format YYYY-MM-DD)
+            example: "{{START_DATE}}"
+          description: Tanggal awal periode laporan (format YYYY-MM-DD). Nilai example otomatis disesuaikan dengan tanggal server (7 hari yang lalu).
         - name: end_date
           in: query
           required: true
           schema:
             type: string
             format: date
-            example: "2026-02-01"
-          description: Tanggal akhir periode laporan (format YYYY-MM-DD)
+            example: "{{END_DATE}}"
+          description: Tanggal akhir periode laporan (format YYYY-MM-DD). Nilai example otomatis disesuaikan dengan tanggal server (hari ini).
       responses:
         "200":
           description: Laporan periode yang ditentukan

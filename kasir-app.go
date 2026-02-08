@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"kasir-api/config"
 	"kasir-api/database"
@@ -102,8 +104,19 @@ func handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to read spec", http.StatusInternalServerError)
 		return
 	}
+
+	// Get current server time
+	now := time.Now()
+	endDate := now.Format("2006-01-02")
+	startDate := now.AddDate(0, 0, -7).Format("2006-01-02") // 7 days ago
+
+	// Replace placeholder dates with dynamic dates
+	specStr := string(spec)
+	specStr = strings.ReplaceAll(specStr, "{{END_DATE}}", endDate)
+	specStr = strings.ReplaceAll(specStr, "{{START_DATE}}", startDate)
+
 	w.Header().Set("Content-Type", "application/yaml")
-	w.Write(spec)
+	w.Write([]byte(specStr))
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
